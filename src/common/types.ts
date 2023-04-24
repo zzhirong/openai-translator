@@ -44,6 +44,7 @@ export interface IThemedStyleProps {
 export interface ISettings {
     apiKeys: string
     apiURL: string
+    ankiDeck: string
     apiURLPath: string
     apiModel: string
     provider: Provider | 'OpenAI'

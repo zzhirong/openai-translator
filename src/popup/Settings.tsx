@@ -735,6 +735,7 @@ export function Settings(props: IPopupProps) {
     const [values, setValues] = useState<ISettings>({
         apiKeys: '',
         apiURL: utils.defaultAPIURL,
+        ankiDeck: utils.defaultAnkiDeck,
         apiURLPath: utils.defaultAPIURLPath,
         apiModel: utils.defaultAPIModel,
         provider: utils.defaultProvider,
@@ -962,6 +963,9 @@ export function Settings(props: IPopupProps) {
                         </FormItem>
                         <FormItem name='ocrHotkey' label={t('OCR Hotkey')}>
                             <HotkeyRecorder onBlur={onBlur} />
+                        </FormItem>
+                        <FormItem name='ankiDeck' label='Anki Deck Name'>
+                            <Input size='compact' />
                         </FormItem>
                         <div
                             style={{

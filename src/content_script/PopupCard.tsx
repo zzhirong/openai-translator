@@ -16,7 +16,7 @@ import { detectLang, supportLanguages } from './lang'
 import { translate, TranslateMode } from './translate'
 import { Select, Value, Option } from 'baseui-sd/select'
 import { CopyToClipboard } from 'react-copy-to-clipboard'
-import { RxCopy, RxEraser, RxReload, RxSpeakerLoud } from 'react-icons/rx'
+import { RxCopy, RxEraser, RxReload, RxSpeakerLoud, RxBookmark, RxBookmarkFilled, RxShare1} from 'react-icons/rx'
 import { calculateMaxXY, queryPopupCardElement } from './utils'
 import { clsx } from 'clsx'
 import { Button } from 'baseui-sd/button'
@@ -39,6 +39,7 @@ import LRUCache from 'lru-cache'
 import { ISettings, IThemedStyleProps } from '../common/types'
 import { useTheme } from '../common/hooks/useTheme'
 import { speak } from '../common/tts'
+import { saveToAnki } from '../common/anki'
 import { Tooltip } from '../components/Tooltip'
 import { useSettings } from '../common/hooks/useSettings'
 import Vocabulary from './Vocabulary'
@@ -46,6 +47,8 @@ import { LocalDB, VocabularyItem } from '../common/db'
 import { useCollectedWordTotal } from '../common/hooks/useCollectedWordTotal'
 import { Modal } from 'baseui-sd/modal'
 import * as Sentry from '@sentry/react'
+// import { fetchSSE } from './utils'
+import { backgroundFetch } from '../common/background-fetch'
 
 Sentry.init({
     dsn: 'https://477519542bd6491cb347ca3f55fcdce6@o441417.ingest.sentry.io/4505051776090112',
@@ -537,6 +540,7 @@ export function PopupCard(props: IPopupCardProps) {
         setTranslatedLines(translatedText.split('\n'))
     }, [translatedText])
     const [isSpeakingTranslatedText, setIsSpeakingTranslatedText] = useState(false)
+    const [isSavedToAnki, setIsSavedToAnki] = useState(false)
     const [errorMessage, setErrorMessage] = useState('')
     const startLoading = useCallback(() => {
         setIsLoading(true)
@@ -545,6 +549,7 @@ export function PopupCard(props: IPopupCardProps) {
         setIsLoading(false)
     }, [])
     useEffect(() => {
+        setIsSavedToAnki(false)
         setOriginalText(props.text)
     }, [props.text])
     useEffect(() => {
@@ -1043,6 +1048,56 @@ export function PopupCard(props: IPopupCardProps) {
             text: translatedText,
             lang: detectTo,
             onFinish: handleSpeakDone,
+        })
+    }
+    const handleSaveToAnki = (): void => {
+      const request = {
+        "action": "addNote",
+        "version": 6,
+        "params": {
+          "note": {
+            "deckName": settings?.ankiDeck ?? "Default",
+            "modelName": "Basic",
+            "fields": {
+              "Front": editableText,
+              "Back": translatedText
+            },
+            "options": {
+              "allowDuplicate": false,
+              "duplicateScope": "deck",
+              "duplicateScopeOptions": {
+                "deckName": "Default",
+                "checkChildren": false,
+                "checkAllModels": false
+              }
+            },
+            "tags": [
+              "yomichan"
+            ],
+          }
+        }
+      };
+    
+      const ankiEndpoint = 'http://127.0.0.1:8765';
+    
+      let new_request_headers = new Headers();
+      new_request_headers.set('Content-Type', 'application/json');
+      backgroundFetch(ankiEndpoint, {
+            method: 'POST',
+            headers: new_request_headers,
+            body: JSON.stringify(request),
+            stream: false,
+            onMessage: (_) => {
+            },
+            onError: (_) => {
+            },
+        })
+        .then((_) => {
+            setIsSavedToAnki(true)
+        })
+        .catch((error) => {
+            setIsSavedToAnki(false)
+            console.log("error:", error)
         })
     }
 
@@ -1610,6 +1665,20 @@ export function PopupCard(props: IPopupCardProps) {
                                                                         </div>
                                                                     </CopyToClipboard>
                                                                 </div>
+                                                            </Tooltip>
+                                                            <Tooltip content="Save to Anki" placement='bottom'>
+                                                                <div onClick={handleSaveToAnki} >
+                                                                    {isSavedToAnki ? (
+                                                                        <RxBookmarkFilled size={13} />
+                                                                    ) : (
+                                                                        <RxBookmark size={13} />
+                                                                    )}
+                                                                </div>
+                                                            </Tooltip>
+                                                            <Tooltip content="Send to OpenCat" placement='bottom'>
+                                                                <a href={`opencat://conversations/?message=${encodeURIComponent("Translate next in Chines:\n" + editableText)}`}>
+                                                                    <RxShare1 size={13} />
+                                                                </a>
                                                             </Tooltip>
                                                         </div>
                                                     )}
